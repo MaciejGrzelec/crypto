@@ -15,12 +15,14 @@ import java.util.List;
 public class CryptoService {
 
     private final WebClient webClient;
+    private final CoinRepository coinRepository;
 
     @Value("${rapidapi.key}")
     private String rapidApiKey;
 
-    public CryptoService(WebClient.Builder webClientBuilder) {
+    public CryptoService(WebClient.Builder webClientBuilder, CoinRepository coinRepository) {
         this.webClient = webClientBuilder.baseUrl("https://coinranking1.p.rapidapi.com").build();
+        this.coinRepository = coinRepository;
     }
 
     public void getCoins(@RequestParam String time, @RequestParam String orderBy, Pageable pageable) {
@@ -47,8 +49,11 @@ public class CryptoService {
             ObjectMapper objectMapper = new ObjectMapper();
             CoinsDto response = objectMapper.readValue(responseBody, CoinsDto.class);
             List<CoinsDto.Data.Coin> coins = response.getData().getCoins();
-            System.out.println("Parsed response: " + response);
-            coins.forEach(System.out::println);
+            List<CoinEntity> entityList = coins.stream().map(e -> {
+                System.out.println(e);
+                return CoinEntity.fromDto(e);
+            }).toList();
+            coinRepository.saveAll(entityList);
         } catch (Exception e) {
             System.err.println("Error parsing JSON to response: " + e.getMessage());
             e.printStackTrace();
